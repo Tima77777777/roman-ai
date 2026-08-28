@@ -2,6 +2,34 @@
 
 AI-компания ROMAN — автоматизированный конвейер контента, стартующий с одного бренда (ROMAN) и постепенно расширяющийся на остальные направления.
 
-Статус: **Фаза 0 — Research & Architecture** (см. `docs/`).
+Статус: **Фаза 1 — Core implementation** (пайплайн-скрипты написаны и протестированы, ждут OAuth-настройки владельца для реальной публикации).
 
-Полное ТЗ (продуктовое + инженерное): см. `docs/TZ_AI_Company_Hybrid.md`.
+## Документация
+
+- `docs/TZ_AI_Company_Hybrid.md` — полное исходное ТЗ (продуктовое + инженерное).
+- `docs/TECHNOLOGY_AUDIT.md` — Technology Audit Фазы 0 (проверенные факты о доступности/цене инструментов).
+- `docs/ARCHITECTURE.md` — архитектура MVP (один бренд, режим ROMAN RAW, командный центр Telegram+GitHub).
+- `docs/adr/` — Architecture Decision Records.
+- `docs/IMPLEMENTATION_PLAN.md` — план внедрения с приоритетами P0–P3 и текущим статусом каждого пункта.
+
+## Скрипты пайплайна (`scripts/`)
+
+Все self-hosted, без сторонних платных API (по решению владельца):
+
+| Скрипт | Назначение | Статус |
+|---|---|---|
+| `transcribe.py` | Расшифровка голоса/видео (faster-whisper) | Готово, протестировано на реальном голосовом сообщении |
+| `edit_clip.py` | Нарезка сегментов, субтитры, экспорт 16:9/9:16 (FFmpeg) | Готово, протестировано end-to-end |
+| `download_from_drive.py` | Приём видео по ссылке из Google Drive | Готово, ждёт OAuth владельца |
+| `publish_youtube.py` | Публикация на YouTube (Data API v3) | Готово, ждёт OAuth владельца |
+| `publish_facebook.py` | Публикация Reels на Facebook Page | Готово, ждёт Page Access Token владельца |
+| `publish_guard.py` | Защита от повторной публикации одного ролика | Готово, протестировано |
+| `policy_check.py` | Проверка, требует ли действие подтверждения владельца | Готово, см. `policy.json` |
+
+## Управление
+
+Владелец (Роман) ставит задачи через Telegram-бота (`@MyClaudhelp55555_bot`). См. `docs/ARCHITECTURE.md`, раздел 3, о текущем (локальный поллер) и целевом (облачная Routine) механизме.
+
+## Открытые задачи, требующие действия владельца
+
+См. `docs/IMPLEMENTATION_PLAN.md` — помечены **"Это может сделать только владелец"** (OAuth для YouTube/Facebook/Drive, подключение GitHub App к claude.ai Routines, модерация Instagram/TikTok).
