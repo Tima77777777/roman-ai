@@ -91,8 +91,18 @@ def publish_reel(video_path: str, description: str) -> str:
 
 
 if __name__ == "__main__":
+    from publish_guard import already_published, mark_published
+
     if len(sys.argv) != 3:
         print("Usage: python publish_facebook.py <video_path> <description>", file=sys.stderr)
         sys.exit(1)
-    vid = publish_reel(sys.argv[1], sys.argv[2])
+    video_path, description = sys.argv[1], sys.argv[2]
+
+    existing = already_published(video_path, "facebook")
+    if existing:
+        print(f"Already published (skipped, idempotency guard): {existing}")
+        sys.exit(0)
+
+    vid = publish_reel(video_path, description)
+    mark_published(video_path, "facebook", vid)
     print(f"Published Facebook Reel, video_id={vid}")

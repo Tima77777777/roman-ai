@@ -66,10 +66,20 @@ def upload(video_path: str, title: str, description: str, is_shorts: bool) -> st
 
 
 if __name__ == "__main__":
+    from publish_guard import already_published, mark_published
+
     if len(sys.argv) < 4:
         print("Usage: python publish_youtube.py <video_path> <title> <description> [--shorts]", file=sys.stderr)
         sys.exit(1)
     video_path, title, description = sys.argv[1:4]
     is_shorts = "--shorts" in sys.argv[4:]
+
+    existing = already_published(video_path, "youtube")
+    if existing:
+        print(f"Already published (skipped, idempotency guard): {existing}")
+        sys.exit(0)
+
     video_id = upload(video_path, title, description, is_shorts)
-    print(f"https://youtube.com/watch?v={video_id}")
+    url = f"https://youtube.com/watch?v={video_id}"
+    mark_published(video_path, "youtube", url)
+    print(url)
