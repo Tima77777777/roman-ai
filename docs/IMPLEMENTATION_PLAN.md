@@ -42,18 +42,19 @@
 - Tests: n/a.
 - Acceptance criteria: заявки поданы (не обязательно одобрены) не позднее первого дня практической разработки Phase 1.
 
-### ⬜ TODO — базовый пайплайн ROMAN RAW (шаги 1–8 из ARCHITECTURE.md раздел 2)
-- Objective: сквозной путь от ссылки на видео в Google Drive до готовых, смонтированных версий с субтитрами.
-- Dependencies: Google Drive MCP подключён (ADR-002), Deepgram API-ключ получен (ADR-004).
-- Files: `packages/pipeline/` (транскрипция, выделение моментов, монтаж — конкретная структура по ADR-001, TS/Node.js).
-- Tests: end-to-end прогон на одном тестовом видео (5–10 минут) — от ссылки в Telegram до готового ролика с субтитрами.
-- Acceptance criteria: MVP-цикл из раздела 8 ТЗ выполняется вручную (owner triggers) хотя бы один раз целиком.
+### базовый пайплайн ROMAN RAW (шаги 1–8 из ARCHITECTURE.md раздел 2)
+- ✅ DONE — транскрипция: `scripts/transcribe.py` (self-hosted faster-whisper), протестировано на реальном голосовом сообщении владельца.
+- ✅ DONE — монтаж/субтитры/9:16 экспорт: `scripts/edit_clip.py` (FFmpeg), протестировано end-to-end на синтетическом видео (нарезка сегментов, вжигание субтитров, вертикальный кроп для Shorts/Reels/TikTok).
+- ⬜ TODO — выделение "лучших моментов" и хук/сценарий: это не отдельный скрипт, а рассуждение самого исполнителя (Claude) над транскриптом — реализуется как часть промпта при реальном прогоне, а не кодом.
+- ⬜ TODO — приём видео из Google Drive по ссылке (сейчас пайплайн тестировался на локальном файле, не на реальной ссылке Drive).
+- Tests: end-to-end прогон на одном тестовом видео (5–10 минут) от РЕАЛЬНОГО владельца — ещё предстоит (пока только синтетическое тестовое видео).
+- Acceptance criteria: MVP-цикл из раздела 8 ТЗ выполняется вручную (owner triggers) хотя бы один раз целиком, включая реальную публикацию.
 
-### ⬜ TODO — публикация на YouTube и Facebook
-- Objective: первые две площадки без ожидания модерации (ADR-006).
-- Dependencies: Google Cloud проект + OAuth2 для YouTube; Facebook Page + Graph API токен.
-- Files: `packages/publishing/youtube.ts`, `packages/publishing/facebook.ts`.
-- Tests: тестовая публикация одного готового ролика на оба канала.
+### публикация на YouTube и Facebook
+- ✅ DONE (частично) — `scripts/publish_youtube.py` написан и проверен: корректно и понятно падает, если OAuth не настроен (не крашится непонятно).
+- ⬜ TODO — сам OAuth: создать Google Cloud проект, включить YouTube Data API v3, создать OAuth client (Desktop app), скачать `client_secret.json` → положить путь в `.env` как `YOUTUBE_CLIENT_SECRETS_FILE`. **Это может сделать только владелец** (создание проекта в Google Cloud Console).
+- ⬜ TODO — `scripts/publish_facebook.py` (Graph API, Facebook Page) — ещё не написан.
+- Tests: тестовая публикация одного готового ролика на оба канала — после того как владелец пройдёт OAuth-шаг выше.
 - Acceptance criteria: ролик опубликован, ссылка возвращена в отчёте Роману.
 
 ---
