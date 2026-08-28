@@ -23,3 +23,9 @@ Thumbs.db
 
 # logs
 *.log
+
+# downloaded audio (personal voice data, never committed)
+scripts/*.ogg
+scripts/*.oga
+scripts/*.wav
+scripts/*.mp3
