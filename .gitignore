@@ -34,3 +34,5 @@ scripts/*.mp3
 scripts/test_input.mp4
 scripts/test_segments.json
 scripts/test_output/
+scripts/dryrun_input.mp4
+scripts/dryrun_output/
