@@ -53,7 +53,8 @@
 ### публикация на YouTube и Facebook
 - ✅ DONE (частично) — `scripts/publish_youtube.py` написан и проверен: корректно и понятно падает, если OAuth не настроен (не крашится непонятно).
 - ⬜ TODO — сам OAuth: создать Google Cloud проект, включить YouTube Data API v3, создать OAuth client (Desktop app), скачать `client_secret.json` → положить путь в `.env` как `YOUTUBE_CLIENT_SECRETS_FILE`. **Это может сделать только владелец** (создание проекта в Google Cloud Console).
-- ⬜ TODO — `scripts/publish_facebook.py` (Graph API, Facebook Page) — ещё не написан.
+- ✅ DONE (частично) — `scripts/publish_facebook.py` написан и проверен (resumable upload flow, Reels): корректно падает без Page Access Token, аналогично YouTube.
+- ⬜ TODO — сам Facebook Page + Meta-приложение + Page Access Token. **Это может сделать только владелец.**
 - Tests: тестовая публикация одного готового ролика на оба канала — после того как владелец пройдёт OAuth-шаг выше.
 - Acceptance criteria: ролик опубликован, ссылка возвращена в отчёте Роману.
 
