@@ -29,3 +29,8 @@ scripts/*.ogg
 scripts/*.oga
 scripts/*.wav
 scripts/*.mp3
+
+# local test artifacts
+scripts/test_input.mp4
+scripts/test_segments.json
+scripts/test_output/
