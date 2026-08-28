@@ -97,6 +97,9 @@ if __name__ == "__main__":
         print("Usage: python publish_facebook.py <video_path> <description>", file=sys.stderr)
         sys.exit(1)
     video_path, description = sys.argv[1], sys.argv[2]
+    if not os.path.isfile(video_path):
+        print(f"Video file not found: {video_path}", file=sys.stderr)
+        sys.exit(2)  # fail before touching the API — no point burning a request for a typo'd path
 
     existing = already_published(video_path, "facebook")
     if existing:

@@ -3,6 +3,7 @@
 Usage: python transcribe.py <audio_file_path>
 Prints the transcribed text to stdout.
 """
+import os
 import sys
 import time
 from faster_whisper import WhisperModel
@@ -33,4 +34,11 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python transcribe.py <audio_file_path>", file=sys.stderr)
         sys.exit(1)
-    print(transcribe(sys.argv[1]))
+    if not os.path.isfile(sys.argv[1]):
+        print(f"File not found: {sys.argv[1]}", file=sys.stderr)
+        sys.exit(2)  # fail fast — a missing file is not a transient error worth retrying
+
+    text = transcribe(sys.argv[1])
+    if not text:
+        print("Warning: transcription produced empty text (silent video or no speech detected).", file=sys.stderr)
+    print(text)

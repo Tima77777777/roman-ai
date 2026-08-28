@@ -11,6 +11,7 @@ segments.json:
 ]
 """
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -18,6 +19,28 @@ from pathlib import Path
 
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 5
+
+
+def check_ffmpeg_available() -> None:
+    if shutil.which("ffmpeg") is None:
+        print(
+            "ffmpeg не найден в PATH. Установите: winget install --id Gyan.FFmpeg "
+            "(или см. docs/TECHNOLOGY_AUDIT.md, раздел 'Транскрипция и монтаж видео').",
+            file=sys.stderr,
+        )
+        sys.exit(3)
+
+
+def validate_segment(seg: dict, index: int) -> None:
+    if "start" not in seg or "end" not in seg:
+        raise ValueError(f"segment {index}: missing 'start' or 'end' field — {seg}")
+    start, end = seg["start"], seg["end"]
+    if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+        raise ValueError(f"segment {index}: 'start'/'end' must be numbers — got {seg}")
+    if start < 0:
+        raise ValueError(f"segment {index}: 'start' cannot be negative ({start})")
+    if end <= start:
+        raise ValueError(f"segment {index}: 'end' ({end}) must be greater than 'start' ({start})")
 
 
 def run(cmd: list[str]) -> None:
@@ -85,10 +108,24 @@ def main() -> None:
     if len(sys.argv) != 4:
         print("Usage: python edit_clip.py <input_video> <segments.json> <output_dir>", file=sys.stderr)
         sys.exit(1)
+    check_ffmpeg_available()
+
     input_video, segments_path, output_dir = sys.argv[1:4]
+    if not Path(input_video).is_file():
+        print(f"Input video not found: {input_video}", file=sys.stderr)
+        sys.exit(2)
+    if not Path(segments_path).is_file():
+        print(f"segments.json not found: {segments_path}", file=sys.stderr)
+        sys.exit(2)
+
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     segments = json.loads(Path(segments_path).read_text(encoding="utf-8-sig"))
+    if not segments:
+        print("segments.json is empty — nothing to do.", file=sys.stderr)
+        sys.exit(2)
+    for i, seg in enumerate(segments):
+        validate_segment(seg, i)
 
     for i, seg in enumerate(segments):
         wide, tall = process_segment(input_video, seg, out, i)

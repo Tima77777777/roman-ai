@@ -72,6 +72,9 @@ if __name__ == "__main__":
         print("Usage: python publish_youtube.py <video_path> <title> <description> [--shorts]", file=sys.stderr)
         sys.exit(1)
     video_path, title, description = sys.argv[1:4]
+    if not os.path.isfile(video_path):
+        print(f"Video file not found: {video_path}", file=sys.stderr)
+        sys.exit(2)  # fail before touching OAuth — no point starting a browser flow for a typo'd path
     is_shorts = "--shorts" in sys.argv[4:]
 
     existing = already_published(video_path, "youtube")
