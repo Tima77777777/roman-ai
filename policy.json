@@ -1,0 +1,30 @@
+{
+  "_comment": "Формализация правила из ARCHITECTURE.md раздел 1.3 (P1, docs/IMPLEMENTATION_PLAN.md). Категории действий: always_allowed выполняются автономно; requires_owner_approval — исполнитель обязан НЕ выполнять их сам, а зафиксировать в отчёте Роману как требующие решения.",
+
+  "always_allowed": [
+    "read_write_edit_files_in_repo",
+    "commit_and_push_to_main",
+    "run_pipeline_step_transcribe",
+    "run_pipeline_step_edit_clip",
+    "publish_to_already_configured_platform",
+    "update_docs_and_implementation_plan",
+    "reply_to_owner_in_telegram",
+    "advance_telegram_offset",
+    "install_free_open_source_tooling_locally",
+    "read_only_api_calls"
+  ],
+
+  "requires_owner_approval": [
+    "new_paid_subscription_or_service_signup",
+    "new_external_account_creation_requiring_owner_identity",
+    "irreversible_financial_action",
+    "change_repository_visibility",
+    "delete_or_overwrite_owner_data",
+    "modify_accepted_architecture_decision_without_explicit_request",
+    "grant_new_third_party_access_to_owner_accounts",
+    "publish_content_to_a_platform_for_the_first_time_without_prior_test",
+    "revoke_or_rotate_credentials_without_being_asked"
+  ],
+
+  "notes": "Категория определяется исполнителем по смыслу задачи, не строгим regex-совпадением. Список неполный по конструкции — при сомнении (действие явно не в always_allowed) по умолчанию считать requires_owner_approval."
+}
