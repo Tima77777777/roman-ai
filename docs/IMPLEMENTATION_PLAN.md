@@ -68,6 +68,9 @@
 - ✅ DONE — idempotency для публикации: `scripts/publish_guard.py` (хеш файла + платформа → `state/published.json`), подключён к `publish_youtube.py` и `publish_facebook.py`, протестирован.
 - ✅ DONE — failure handling: retry с backoff (3 попытки, 5 сек) в `scripts/transcribe.py` и `scripts/edit_clip.py`, регрессия пройдена после изменения.
 - **Уточнить UNKNOWN-пункты из Technology Audit перед тем, как на них полагаться в продакшне**: реальный лимит `getFile` для больших файлов, гео-ограничения ElevenLabs (если/когда голосовое клонирование понадобится), поддержка Reels в Buffer (если решат туда переходить).
+- ✅ DONE (написано и лежит локально, **не в git** — токен без scope `workflow`, GitHub блокирует любой push, где такой коммит есть в истории) — базовый CI: `.github/workflows/ci.yml` (компиляция всех Python-скриптов + валидация JSON-состояния при каждом push). Файл на диске, закоммичу и запушу отдельно, как только придёт токен с нужным scope.
+- ⬜ TODO — токен с scope `workflow` (плюс `repo`). **Объединено с задачей ротации токена.**
+- ✅ DONE — юнит-тесты чистой логики: `scripts/test_pure_logic.py` (extract_file_id, policy_check, publish_guard round-trip на изолированном временном state-файле, не трогает реальный `state/published.json`), все проходят.
 
 ## P2 — расширение охвата и качества
 
