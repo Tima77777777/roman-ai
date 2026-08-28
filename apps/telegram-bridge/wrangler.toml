@@ -1,0 +1,12 @@
+name = "roman-ai-telegram-bridge"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[vars]
+GITHUB_REPO = "Tima77777777/roman-ai"
+
+# Secrets (NOT in this file — set via `wrangler secret put <NAME>`):
+#   TELEGRAM_BOT_TOKEN
+#   TELEGRAM_WEBHOOK_SECRET
+#   GITHUB_TOKEN
+#   OWNER_TELEGRAM_ID

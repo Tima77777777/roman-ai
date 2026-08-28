@@ -63,7 +63,8 @@
 
 ## P1 — нужно для надёжной автономной работы
 
-- **Cloudflare Worker + GitHub Actions мост** (ADR-003) — замена часовой cron-задержки на near-realtime реакцию. Files: `apps/telegram-bridge/` (Worker), `.github/workflows/telegram-issue-trigger.yml`.
+- ✅ DONE (частично) — Cloudflare Worker код (ADR-003): `apps/telegram-bridge/` — написан, типизирован, `npx tsc --noEmit` проходит чисто. Owner-only allowlist и проверка webhook secret реализованы. **TODO, только владелец**: создать Cloudflare-аккаунт и задеплоить (см. `apps/telegram-bridge/README.md` — точные шаги).
+- ⬜ TODO — `.github/workflows/telegram-issue-trigger.yml` (issue opened → Routine `/fire`) — ещё не написан, зависит от подключения GitHub App к Routines (см. P0 выше).
 - ✅ DONE — явный whitelist автономных действий: `policy.json` + `scripts/policy_check.py`, формализует правило из ARCHITECTURE.md 1.3 как проверяемый список (`always_allowed` / `requires_owner_approval`, дефолт — approval), протестирован.
 - ✅ DONE — idempotency для публикации: `scripts/publish_guard.py` (хеш файла + платформа → `state/published.json`), подключён к `publish_youtube.py` и `publish_facebook.py`, протестирован.
 - ✅ DONE — failure handling: retry с backoff (3 попытки, 5 сек) в `scripts/transcribe.py` и `scripts/edit_clip.py`, регрессия пройдена после изменения.
