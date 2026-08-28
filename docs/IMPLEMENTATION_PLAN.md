@@ -66,7 +66,7 @@
 - **Cloudflare Worker + GitHub Actions мост** (ADR-003) — замена часовой cron-задержки на near-realtime реакцию. Files: `apps/telegram-bridge/` (Worker), `.github/workflows/telegram-issue-trigger.yml`.
 - **Явный whitelist разрешённых/запрещённых автономных действий** — сейчас правило "не выполнять необратимые действия" держится только на тексте промпта (ARCHITECTURE.md, раздел 1.3); формализовать как проверяемый список операций (публикация — да, оплата нового сервиса — нет, и т.д.).
 - ✅ DONE — idempotency для публикации: `scripts/publish_guard.py` (хеш файла + платформа → `state/published.json`), подключён к `publish_youtube.py` и `publish_facebook.py`, протестирован.
-- **Failure handling для пайплайна**: retry для транскрипции/FFmpeg-шагов (ещё не реализован).
+- ✅ DONE — failure handling: retry с backoff (3 попытки, 5 сек) в `scripts/transcribe.py` и `scripts/edit_clip.py`, регрессия пройдена после изменения.
 - **Уточнить UNKNOWN-пункты из Technology Audit перед тем, как на них полагаться в продакшне**: реальный лимит `getFile` для больших файлов, гео-ограничения ElevenLabs (если/когда голосовое клонирование понадобится), поддержка Reels в Buffer (если решат туда переходить).
 
 ## P2 — расширение охвата и качества

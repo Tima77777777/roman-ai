@@ -13,11 +13,30 @@ segments.json:
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+MAX_RETRIES = 3
+RETRY_BACKOFF_SECONDS = 5
 
 
 def run(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True, capture_output=True)
+    last_error: subprocess.CalledProcessError | None = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            subprocess.run(cmd, check=True, capture_output=True)
+            return
+        except subprocess.CalledProcessError as e:
+            last_error = e
+            if attempt < MAX_RETRIES:
+                stderr = e.stderr.decode(errors="replace") if e.stderr else ""
+                print(
+                    f"ffmpeg failed (attempt {attempt}/{MAX_RETRIES}), retrying in "
+                    f"{RETRY_BACKOFF_SECONDS}s: {stderr[-500:]}",
+                    file=sys.stderr,
+                )
+                time.sleep(RETRY_BACKOFF_SECONDS)
+    raise last_error
 
 
 def cut_segment(input_path: str, start: float, end: float, out_path: str) -> None:
