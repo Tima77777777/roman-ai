@@ -1,0 +1,80 @@
+# Implementation Plan — ROMAN AI (MVP)
+
+Приоритеты: **P0** — без этого MVP не работает. **P1** — нужно для надёжной автономной работы. **P2** — расширение охвата площадок/качества. **P3** — можно отложить надолго. Решения по каждому пункту — см. `docs/adr/`.
+
+---
+
+## P0 — без этого MVP не работает
+
+### ✅ DONE — репозиторий и командный центр
+- Создан GitHub-репозиторий `github.com/Tima77777777/roman-ai`, git настроен локально.
+- `README.md`, `.gitignore` (исключает `.env`), `.env.example` — на месте.
+- `docs/TZ_AI_Company_Hybrid.md`, `docs/TECHNOLOGY_AUDIT.md`, `docs/ARCHITECTURE.md`, `docs/adr/*` — в репозитории.
+
+### ✅ DONE — Telegram-интерфейс
+- Bot создан и проверен (`@MyClaudhelp55555_bot`), токен в `.env`.
+- `TELEGRAM_OWNER_ID` определён и сохранён.
+- Owner-only фильтрация реализована в промпте исполнителя.
+
+### ✅ DONE — исполнитель (временный)
+- `state/telegram_offset.json` — механизм offset для `getUpdates`.
+- Локальный `CronCreate`-поллер каждые 7 минут — задача создана, работает.
+- **Известное ограничение:** живёт только пока сессия открыта, истекает через 7 дней (ADR-003).
+
+### ⬜ TODO — подключить GitHub App к claude.ai Routines
+- Objective: разблокировать создание Cloud Routine (см. `docs/ARCHITECTURE.md`, раздел 3.2 — заблокировано `401 Connect your GitHub account`).
+- Dependencies: доступ владельца к браузеру/claude.ai аккаунту.
+- Files: нет кодовых изменений, только настройка аккаунта.
+- Tests: `RemoteTrigger.create` с тем же payload, что использовался ранее, возвращает 200 вместо 401.
+- Acceptance criteria: Routine создана и видна в `claude.ai/code/routines`.
+
+### ⬜ TODO — создать Cloud Routine и вернуть репозиторий в private
+- Objective: заменить локальный поллер на облачный, независимый от ноутбука.
+- Dependencies: предыдущий пункт.
+- Files: нет (конфигурация Routine на стороне claude.ai), опционально `docs/ARCHITECTURE.md` обновить статус "не запущено" → "запущено".
+- Tests: отправить тестовое сообщение боту при выключенном ноутбуке/закрытой сессии, убедиться, что Routine обработала его и ответила в течение часа.
+- Acceptance criteria: `gh repo view` показывает `visibility: PRIVATE`; локальный `CronCreate`-поллер можно удалить без потери функциональности.
+
+### ⬜ TODO — подать заявки на модерацию Instagram/TikTok
+- Objective: избежать 2–6-недельного простоя публикации на эти площадки (ADR-006).
+- Dependencies: Facebook Page для бренда ROMAN (для Instagram Professional-аккаунта), TikTok Developer-аккаунт.
+- Files: нет кодовых — административная задача.
+- Tests: n/a.
+- Acceptance criteria: заявки поданы (не обязательно одобрены) не позднее первого дня практической разработки Phase 1.
+
+### ⬜ TODO — базовый пайплайн ROMAN RAW (шаги 1–8 из ARCHITECTURE.md раздел 2)
+- Objective: сквозной путь от ссылки на видео в Google Drive до готовых, смонтированных версий с субтитрами.
+- Dependencies: Google Drive MCP подключён (ADR-002), Deepgram API-ключ получен (ADR-004).
+- Files: `packages/pipeline/` (транскрипция, выделение моментов, монтаж — конкретная структура по ADR-001, TS/Node.js).
+- Tests: end-to-end прогон на одном тестовом видео (5–10 минут) — от ссылки в Telegram до готового ролика с субтитрами.
+- Acceptance criteria: MVP-цикл из раздела 8 ТЗ выполняется вручную (owner triggers) хотя бы один раз целиком.
+
+### ⬜ TODO — публикация на YouTube и Facebook
+- Objective: первые две площадки без ожидания модерации (ADR-006).
+- Dependencies: Google Cloud проект + OAuth2 для YouTube; Facebook Page + Graph API токен.
+- Files: `packages/publishing/youtube.ts`, `packages/publishing/facebook.ts`.
+- Tests: тестовая публикация одного готового ролика на оба канала.
+- Acceptance criteria: ролик опубликован, ссылка возвращена в отчёте Роману.
+
+---
+
+## P1 — нужно для надёжной автономной работы
+
+- **Cloudflare Worker + GitHub Actions мост** (ADR-003) — замена часовой cron-задержки на near-realtime реакцию. Files: `apps/telegram-bridge/` (Worker), `.github/workflows/telegram-issue-trigger.yml`.
+- **Явный whitelist разрешённых/запрещённых автономных действий** — сейчас правило "не выполнять необратимые действия" держится только на тексте промпта (ARCHITECTURE.md, раздел 1.3); формализовать как проверяемый список операций (публикация — да, оплата нового сервиса — нет, и т.д.).
+- **Failure handling для пайплайна**: retry для Deepgram/FFmpeg-шагов, idempotency для публикации (не опубликовать один и тот же ролик дважды при повторном запуске).
+- **Уточнить UNKNOWN-пункты из Technology Audit перед тем, как на них полагаться в продакшне**: реальный лимит `getFile` для больших файлов, гео-ограничения ElevenLabs (если/когда голосовое клонирование понадобится), поддержка Reels в Buffer (если решат туда переходить).
+
+## P2 — расширение охвата и качества
+
+- **X (Twitter) API** — подключить, когда объём контента оправдает обязательную привязку карты и pay-per-use.
+- **n8n self-hosted** — развернуть на VPS для оркестрации публикации между площадками вместо прямых вызовов из пайплайна.
+- **Улучшение качества авто-монтажа** — пересмотреть в сторону Shotstack или платных планов Opus Clip/Submagic, если самодельный FFmpeg-пайплайн (ADR-005) не даёт приемлемого качества после практической проверки.
+
+## P3 — можно отложить надолго
+
+- **AI Digital Avatar и voice cloning** (HeyGen/ElevenLabs) — вне MVP по решению владельца, ROMAN RAW работает с реальным видео.
+- **MODE 1 (TREND) и MODE 3 (IDEA)** пайплайны из полного ТЗ.
+- **S3/R2 хранилище** взамен Google Drive — только если квоты Google Drive реально станут узким местом.
+- **Расширение на остальные 8 брендов и департаменты** (Research, Marketing, CRM/Sales, Finance/Crypto) — по решению владельца, после того как этот MVP заработает стабильно на одном бренде.
+- **Юридические/комплаенс/GDPR/CRM-вопросы** из полного ТЗ — осознанно отложены владельцем до появления сайта/CRM (см. память проекта `project_roman_scope`), не блокируют текущий P0–P2.
