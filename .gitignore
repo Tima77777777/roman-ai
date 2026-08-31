@@ -4,6 +4,7 @@
 !.env.example
 secrets/
 scripts/.youtube_token.json
+scripts/.gdrive_token.json
 
 # node
 node_modules/
