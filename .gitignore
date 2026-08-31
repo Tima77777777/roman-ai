@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+secrets/
+scripts/.youtube_token.json
 
 # node
 node_modules/
