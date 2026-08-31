@@ -35,12 +35,11 @@
 - Tests: отправить тестовое сообщение боту при выключенном ноутбуке/закрытой сессии, убедиться, что Routine обработала его и ответила в течение часа.
 - Acceptance criteria: `gh repo view` показывает `visibility: PRIVATE`; локальный `CronCreate`-поллер можно удалить без потери функциональности.
 
-### ⬜ TODO — подать заявки на модерацию Instagram/TikTok
-- Objective: избежать 2–6-недельного простоя публикации на эти площадки (ADR-006).
-- Dependencies: Facebook Page для бренда ROMAN (для Instagram Professional-аккаунта), TikTok Developer-аккаунт.
-- Files: нет кодовых — административная задача.
-- Tests: n/a.
-- Acceptance criteria: заявки поданы (не обязательно одобрены) не позднее первого дня практической разработки Phase 1.
+### Instagram — App Review НЕ требуется для публикации в собственный аккаунт
+- **Важное уточнение по ходу настройки**: изначально план предполагал 2–6-недельное ожидание модерации Meta App Review. По факту это не так, если приложение публикует только в СВОИ ЖЕ Instagram-аккаунты (не в чужие, не SaaS для посторонних пользователей) — в этом случае достаточно роли "Instagram-тестировщик" на аккаунте, без полной проверки приложения и без верификации бизнеса. Обнаружено и подтверждено практически при живой настройке.
+- ✅ DONE (владельцем) — Meta-приложение создано ("ROMAN Content Bot", App ID `1041464175184361`), сценарий "Управление сообщениями и контентом в Instagram" настроен, необходимые разрешения добавлены (`instagram_business_basic`, `instagram_business_manage_comments`, `instagram_business_manage_messages`), Instagram-аккаунт `roman.demidov.official` (Business Account ID `17841403111143576`) добавлен как тестировщик и приглашение принято.
+- ⬜ TODO — сгенерировать access-токен (уперлись в HTTP 429 от Instagram при генерации — временный rate-limit, ждём и повторяем) и App Secret, положить в `.env` как `INSTAGRAM_ACCESS_TOKEN` / `INSTAGRAM_APP_SECRET`. **Требует владельца** (кнопка "Сгенерировать маркер" в кабинете Meta).
+- ⬜ TODO (только если решим публиковать и туда) — TikTok Developer-аккаунт, заявка на публикацию через API — отдельная площадка, свои сроки модерации, ещё не начато.
 
 ### базовый пайплайн ROMAN RAW (шаги 1–8 из ARCHITECTURE.md раздел 2)
 - ✅ DONE — транскрипция: `scripts/transcribe.py` (self-hosted faster-whisper), протестировано на реальном голосовом сообщении владельца.
@@ -54,12 +53,14 @@
 - Tests: end-to-end прогон на одном тестовом видео (5–10 минут) от РЕАЛЬНОГО владельца — ещё предстоит (пока только синтетическое видео + реальная речь из голосового сообщения).
 - Acceptance criteria: MVP-цикл из раздела 8 ТЗ выполняется вручную (owner triggers) хотя бы один раз целиком, включая реальную публикацию.
 
-### публикация на YouTube и Facebook
+### публикация на YouTube, Facebook и Instagram
 - ✅ DONE (частично) — `scripts/publish_youtube.py` написан и проверен: корректно и понятно падает, если OAuth не настроен (не крашится непонятно).
 - ⬜ TODO — сам OAuth: создать Google Cloud проект, включить YouTube Data API v3, создать OAuth client (Desktop app), скачать `client_secret.json` → положить путь в `.env` как `YOUTUBE_CLIENT_SECRETS_FILE`. **Это может сделать только владелец** (создание проекта в Google Cloud Console).
 - ✅ DONE (частично) — `scripts/publish_facebook.py` написан и проверен (resumable upload flow, Reels): корректно падает без Page Access Token, аналогично YouTube.
 - ⬜ TODO — сам Facebook Page + Meta-приложение + Page Access Token. **Это может сделать только владелец.**
-- Tests: тестовая публикация одного готового ролика на оба канала — после того как владелец пройдёт OAuth-шаг выше.
+- ✅ DONE (частично) — `scripts/publish_instagram.py` написан и проверен (Content Publishing API: media container → poll status → publish): корректно падает без токена. **Важное архитектурное отличие от Facebook** — Instagram API не принимает сырые байты видео, только `video_url`, который Instagram сам скачивает по HTTPS — значит перед публикацией видео должно быть где-то опубликовано с публичным URL (например, через Cloudflare-мост), локальный файл напрямую не прокатит.
+- ⬜ TODO — Meta-приложение для Instagram почти готово (см. раздел выше про App Review), осталось получить `INSTAGRAM_ACCESS_TOKEN`/`INSTAGRAM_APP_SECRET` — уперлись в временный rate-limit (429) от Instagram при генерации токена, ждём и повторяем.
+- Tests: тестовая публикация одного готового ролика на все три канала — после того как владелец пройдёт OAuth-шаги выше.
 - Acceptance criteria: ролик опубликован, ссылка возвращена в отчёте Роману.
 
 ---
@@ -69,7 +70,7 @@
 - ✅ DONE (частично) — Cloudflare Worker код (ADR-003): `apps/telegram-bridge/` — написан, типизирован, `npx tsc --noEmit` проходит чисто. Owner-only allowlist и проверка webhook secret реализованы. **TODO, только владелец**: создать Cloudflare-аккаунт и задеплоить (см. `apps/telegram-bridge/README.md` — точные шаги).
 - ⬜ TODO — `.github/workflows/telegram-issue-trigger.yml` (issue opened → Routine `/fire`) — ещё не написан, зависит от подключения GitHub App к Routines (см. P0 выше).
 - ✅ DONE — явный whitelist автономных действий: `policy.json` + `scripts/policy_check.py`, формализует правило из ARCHITECTURE.md 1.3 как проверяемый список (`always_allowed` / `requires_owner_approval`, дефолт — approval), протестирован.
-- ✅ DONE — idempotency для публикации: `scripts/publish_guard.py` (хеш файла + платформа → `state/published.json`), подключён к `publish_youtube.py` и `publish_facebook.py`, протестирован.
+- ✅ DONE — idempotency для публикации: `scripts/publish_guard.py` (хеш файла + платформа → `state/published.json`), подключён к `publish_youtube.py`, `publish_facebook.py` и `publish_instagram.py`, протестирован.
 - ✅ DONE — failure handling: retry с backoff (3 попытки, 5 сек) в `scripts/transcribe.py` и `scripts/edit_clip.py`, регрессия пройдена после изменения.
 - ✅ DONE — реальный лимит `getFile` проверен эмпирически: **ровно 20 МБ** (загружал/скачивал файлы 15/19/20/21/25/30 МБ через реальный Bot API — 20 успех, 21 отказ), см. `docs/TECHNOLOGY_AUDIT.md`. Тестовые файлы отправлялись и сразу удалялись из чата владельца.
 - **Остальные UNKNOWN из Technology Audit**: гео-ограничения ElevenLabs (если/когда голосовое клонирование понадобится), поддержка Reels в Buffer (если решат туда переходить) — не проверены, не блокируют текущий MVP (ElevenLabs/Buffer не выбраны).
