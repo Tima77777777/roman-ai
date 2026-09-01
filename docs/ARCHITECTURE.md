@@ -144,5 +144,5 @@ Telegram (setWebhook) → Cloudflare Worker → POST /repos/.../issues (GitHub R
 1. Найти/дождаться в интерфейсе claude.ai рабочую кнопку подключения GitHub для Routines (либо через прямое обращение в поддержку Anthropic, если кнопка отсутствует в текущей версии интерфейса).
 2. После подключения — вернуть репозиторий в private.
 3. Создать Routine с cron `13 * * * *` (раз в час, смещено от круглой минуты) как первый шаг — заменит локальный поллер.
-4. ✅ Cloudflare Worker уже написан и типизирован (`apps/telegram-bridge/`, `npx tsc --noEmit` чисто) — осталось только развернуть, когда у владельца будет аккаунт Cloudflare (см. `apps/telegram-bridge/README.md` — точные шаги деплоя).
+4. ✅ Cloudflare Worker написан, задеплоен и проверен вживую (`apps/telegram-bridge/`, `https://roman-ai-telegram-bridge.tima-apps.workers.dev`, 2026-09-01) — секрет-проверка/allowlist/создание GitHub Issue подтверждены синтетическими запросами на реальном воркере (см. `apps/telegram-bridge/README.md`). Вебхук реального бота на него намеренно не переключён — ждёт пункта 5 ниже.
 5. Реализовать GitHub Actions workflow как мост `issue opened → Routine /fire` (`.github/workflows/telegram-issue-trigger.yml`, ещё не написан) — нативный GitHub-триггер Routines не покрывает событие Issues (подтверждено по официальной документации).
