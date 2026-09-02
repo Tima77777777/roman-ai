@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 from download_from_drive import extract_file_id
 from policy_check import requires_owner_approval
 import publish_guard
+from generate_quote_image import generate_quote_image, WIDTH, HEIGHT, STYLES
+from PIL import Image
 
 
 def test_extract_file_id():
@@ -51,8 +53,34 @@ def test_publish_guard_roundtrip():
     print("test_publish_guard_roundtrip: OK")
 
 
+def test_generate_quote_image():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for style in STYLES:
+            out_path = os.path.join(tmpdir, f"{style}.jpg")
+            generate_quote_image("Тестовая цитата для проверки генерации", style, out_path, seed=42)
+            assert os.path.exists(out_path), f"no output file for style={style}"
+            with Image.open(out_path) as img:
+                assert img.size == (WIDTH, HEIGHT), f"unexpected size {img.size} for style={style}"
+
+        # A long quote must still fit without crashing or throwing away words.
+        long_out = os.path.join(tmpdir, "long.jpg")
+        generate_quote_image(
+            "Успех — это способность идти от одной неудачи к другой, не теряя энтузиазма и веры в то, что ты делаешь каждый день",
+            "wall", long_out, seed=1,
+        )
+        assert os.path.exists(long_out), "long quote did not render"
+
+        try:
+            generate_quote_image("x", "unknown_style", os.path.join(tmpdir, "bad.jpg"))
+            assert False, "unknown style should raise ValueError"
+        except ValueError:
+            pass
+    print("test_generate_quote_image: OK")
+
+
 if __name__ == "__main__":
     test_extract_file_id()
     test_policy_check()
     test_publish_guard_roundtrip()
+    test_generate_quote_image()
     print("ALL TESTS PASSED")
