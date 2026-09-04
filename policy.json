@@ -9,7 +9,6 @@
     "publish_to_already_configured_platform",
     "update_docs_and_implementation_plan",
     "reply_to_owner_in_telegram",
-    "advance_telegram_offset",
     "install_free_open_source_tooling_locally",
     "read_only_api_calls"
   ],

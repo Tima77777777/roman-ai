@@ -49,7 +49,7 @@ python scripts/publish_instagram.py \
 
 ## Управление
 
-Владелец (Роман) ставит задачи через Telegram-бота (`@MyClaudhelp55555_bot`). См. `docs/ARCHITECTURE.md`, раздел 3, о текущем (локальный поллер) и целевом (облачная Routine) механизме.
+Владелец (Роман) ставит задачи через Telegram-бота (`@MyClaudhelp55555_bot`). С 2026-09-04 сообщения идут через вебхук: Telegram → Cloudflare Worker (`telegram-bridge`) → GitHub Issue → webhook-триггер будит Cloud Routine "Telegram poller" — без polling, реакция за секунды. Часовой `getUpdates`-опрос отключён, оставлен как резерв. См. `docs/ARCHITECTURE.md`, раздел 3 (3.2 — текущая схема, 3.1 — устаревший резерв).
 
 ## Открытые задачи, требующие действия владельца
 

@@ -1,8 +1,12 @@
 /**
  * Cloudflare Worker bridge: Telegram webhook -> GitHub Issue -> wakes a Claude Code
- * Cloud Routine via GitHub Actions (docs/ARCHITECTURE.md, раздел 3.2; ADR-003).
+ * Cloud Routine directly, via RemoteTrigger.create_webhook_trigger (docs/ARCHITECTURE.md,
+ * раздел 3.2; ADR-003) — no GitHub Actions workflow involved.
  *
- * Replaces the ~7-minute local CronCreate poller with a near-instant path once deployed.
+ * Live since 2026-09-04 as the primary channel (replaced polling): this Worker verifies the
+ * webhook secret + owner allowlist and creates a GitHub Issue (label telegram-command) with
+ * the message text; that Issue's `issues.opened` event wakes the Routine within seconds, since
+ * the Routine is subscribed to it directly.
  *
  * Secrets (set via `wrangler secret put <NAME>`, never committed):
  *   TELEGRAM_BOT_TOKEN     — used only to verify this is really our bot's webhook
