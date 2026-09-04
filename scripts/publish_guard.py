@@ -2,8 +2,8 @@
 accidentally publishing the same rendered clip twice (e.g. after a retried/rerun step).
 
 Tracks published files by content hash + platform in state/published.json (committed
-to the repo, same pattern as state/telegram_offset.json — it's the source of truth,
-not a cache, so it must survive across runs/environments).
+to the repo — it's the source of truth, not a cache, so it must survive across
+runs/environments).
 
 Usage as a library:
     from publish_guard import already_published, mark_published
