@@ -1,25 +1,26 @@
-"""Publish a Reel to an Instagram Business account via the Instagram Content Publishing API
-(part of the Graph API), ADR-006.
+"""Publish to an Instagram Business account via the Instagram Content Publishing API
+(part of the Graph API), ADR-006. Supports both video (Reels) and static image posts,
+across either of the two connected accounts (see ACCOUNTS below).
 
 Requires the app + tester setup done in Meta for Developers (docs/IMPLEMENTATION_PLAN.md) —
-App ID 1041464175184361, Instagram Business Account ID 17841403111143576 (roman.demidov.official).
+App ID 1041464175184361. Both accounts' credentials live in .env:
+  INSTAGRAM_BUSINESS_ACCOUNT_ID / INSTAGRAM_ACCESS_TOKEN                     — roman.demidov.official
+  INSTAGRAM_MOTIVATION_BUSINESS_ACCOUNT_ID / INSTAGRAM_MOTIVATION_ACCESS_TOKEN — roomsgold3
 
-Env vars expected:
-  INSTAGRAM_BUSINESS_ACCOUNT_ID   the Instagram professional account's numeric id
-  INSTAGRAM_ACCESS_TOKEN          a user access token with instagram_business_content_publish
+IMPORTANT — unlike publish_facebook.py, this API does NOT accept raw video/image bytes. It
+requires a `video_url`/`image_url` that Instagram's servers fetch over HTTPS themselves — so
+the file must already be hosted somewhere public before calling this script. Automatic upload
+to a public host isn't wired up yet (deliberately deferred, docs/IMPLEMENTATION_PLAN.md); for
+now the caller supplies BOTH a local path (existence check + idempotency hash) and the public
+URL (what Instagram actually fetches) separately.
 
-IMPORTANT — unlike publish_facebook.py, this API does NOT accept raw video bytes. It requires
-a `video_url` that Instagram's servers can fetch over HTTPS themselves (video_reels'
-resumable byte-upload has no Instagram equivalent). So the video must already be hosted
-somewhere public (e.g. the Cloudflare bridge Worker, or a public R2/Pages URL) before calling
-this script — publishing a purely local file needs that upload step first, not handled here.
+Usage (image post, either account):
+  python publish_instagram.py --image <local_path> --image-url <public_url> --account roomsgold3 --caption "..."
 
-Usage: python publish_instagram.py <local_video_path> <public_video_url> <caption>
-
-`local_video_path` is only used for the idempotency guard (content-hash dedup, same as
-publish_facebook.py/publish_youtube.py) — the actual upload happens via `public_video_url`,
-which Instagram's servers fetch themselves.
+Usage (Reel — unchanged from before):
+  python publish_instagram.py <local_video_path> <public_video_url> <caption>
 """
+import argparse
 import os
 import sys
 import time
@@ -27,6 +28,11 @@ import time
 import requests
 
 GRAPH_VERSION = "v25.0"
+
+ACCOUNTS = {
+    "roman.demidov.official": ("INSTAGRAM_BUSINESS_ACCOUNT_ID", "INSTAGRAM_ACCESS_TOKEN"),
+    "roomsgold3": ("INSTAGRAM_MOTIVATION_BUSINESS_ACCOUNT_ID", "INSTAGRAM_MOTIVATION_ACCESS_TOKEN"),
+}
 
 
 def _require_env() -> tuple[str, str]:
@@ -38,6 +44,19 @@ def _require_env() -> tuple[str, str]:
             "публикация не настроена. Положи их в .env (docs/IMPLEMENTATION_PLAN.md, шаг Instagram).",
             file=sys.stderr,
         )
+        sys.exit(2)
+    return account_id, token
+
+
+def _resolve_account(name: str) -> tuple[str, str]:
+    if name not in ACCOUNTS:
+        print(f"Неизвестный аккаунт '{name}'. Доступные: {list(ACCOUNTS)}", file=sys.stderr)
+        sys.exit(2)
+    account_var, token_var = ACCOUNTS[name]
+    account_id = os.environ.get(account_var)
+    token = os.environ.get(token_var)
+    if not account_id or not token:
+        print(f"{account_var} / {token_var} не заданы в .env для аккаунта '{name}'.", file=sys.stderr)
         sys.exit(2)
     return account_id, token
 
@@ -86,7 +105,74 @@ def publish_reel(video_url: str, caption: str) -> str:
     return publish.json()["id"]
 
 
-if __name__ == "__main__":
+def publish_image(image_url: str, caption: str, account_id: str, token: str) -> tuple[str, str | None]:
+    base = f"https://graph.facebook.com/{GRAPH_VERSION}/{account_id}"
+
+    # Step 1: create a media container — Instagram fetches the image from `image_url` itself.
+    create = requests.post(
+        f"{base}/media",
+        data={"image_url": image_url, "caption": caption, "access_token": token},
+        timeout=30,
+    )
+    create.raise_for_status()
+    container_id = create.json()["id"]
+
+    # Step 2: publish immediately — unlike REELS, a static image needs no processing wait.
+    publish = requests.post(
+        f"{base}/media_publish",
+        data={"creation_id": container_id, "access_token": token},
+        timeout=30,
+    )
+    publish.raise_for_status()
+    media_id = publish.json()["id"]
+
+    # Best-effort permalink lookup — a failed lookup shouldn't make a successful publish look failed.
+    permalink = None
+    try:
+        info = requests.get(
+            f"https://graph.facebook.com/{GRAPH_VERSION}/{media_id}",
+            params={"fields": "permalink", "access_token": token},
+            timeout=15,
+        )
+        permalink = info.json().get("permalink")
+    except requests.RequestException:
+        pass
+
+    return media_id, permalink
+
+
+def _run_image_cli() -> None:
+    from publish_guard import already_published, mark_published
+
+    parser = argparse.ArgumentParser(description="Publish a static image post to Instagram")
+    parser.add_argument("--image", required=True, help="Local image path — existence check + idempotency hash")
+    parser.add_argument("--image-url", required=True, help="Public HTTPS URL Instagram will fetch the image from")
+    parser.add_argument("--account", required=True, choices=list(ACCOUNTS), help="Which connected account to publish to")
+    parser.add_argument("--caption", default="", help="Post caption (default: empty)")
+    args = parser.parse_args(sys.argv[1:])
+
+    if not os.path.isfile(args.image):
+        print(f"Image file not found: {args.image}", file=sys.stderr)
+        sys.exit(2)  # fail before touching the API — no point burning a request for a typo'd path
+
+    account_id, token = _resolve_account(args.account)
+
+    # Keyed by account too — the same picture legitimately posted to BOTH accounts is two
+    # separate publishes, not a duplicate of itself.
+    platform_key = f"instagram:{args.account}"
+    existing = already_published(args.image, platform_key)
+    if existing:
+        print(f"Already published to {args.account} (skipped, idempotency guard): {existing}")
+        return
+
+    media_id, permalink = publish_image(args.image_url, args.caption, account_id, token)
+    mark_published(args.image, platform_key, media_id)
+    print(f"Published to {args.account}: status=ok media_id={media_id}")
+    if permalink:
+        print(f"Link: {permalink}")
+
+
+def _run_reel_cli() -> None:
     from publish_guard import already_published, mark_published
 
     if len(sys.argv) != 4:
@@ -100,8 +186,18 @@ if __name__ == "__main__":
     existing = already_published(local_video_path, "instagram")
     if existing:
         print(f"Already published (skipped, idempotency guard): {existing}")
-        sys.exit(0)
+        return
 
     media_id = publish_reel(video_url, caption)
     mark_published(local_video_path, "instagram", media_id)
     print(f"Published Instagram Reel, media_id={media_id}")
+
+
+if __name__ == "__main__":
+    # Flag-based invocation (--image ...) = the new static-image CLI; a bare positional
+    # invocation = the original Reels CLI, unchanged. Dispatched on argv shape rather than a
+    # subcommand so the existing Reels usage keeps working exactly as documented before.
+    if len(sys.argv) > 1 and sys.argv[1].startswith("-"):
+        _run_image_cli()
+    else:
+        _run_reel_cli()
