@@ -14,8 +14,12 @@ to a public host isn't wired up yet (deliberately deferred, docs/IMPLEMENTATION_
 now the caller supplies BOTH a local path (existence check + idempotency hash) and the public
 URL (what Instagram actually fetches) separately.
 
-Usage (image post, either account):
-  python publish_instagram.py --image <local_path> --image-url <public_url> --account roomsgold3 --caption "..."
+Usage (image post, either account — see README.md for a full worked example):
+  python publish_instagram.py -i <local_path> -u <public_url> -a roomsgold3 -c "caption text"
+  (long form also works: --image/--image-url/--account/--caption)
+
+`<local_path>` can be ANY file on disk — it's only used for the existence check and the
+publish_guard idempotency hash, not to locate the image (that's what -u/--image-url is for).
 
 Usage (Reel — unchanged from before):
   python publish_instagram.py <local_video_path> <public_video_url> <caption>
@@ -63,7 +67,7 @@ def _resolve_account(name: str) -> tuple[str, str]:
 
 def publish_reel(video_url: str, caption: str) -> str:
     account_id, token = _require_env()
-    base = f"https://graph.facebook.com/{GRAPH_VERSION}/{account_id}"
+    base = f"https://graph.instagram.com/{GRAPH_VERSION}/{account_id}"
 
     # Step 1: create a media container — Instagram fetches the video from `video_url` itself.
     create = requests.post(
@@ -82,7 +86,7 @@ def publish_reel(video_url: str, caption: str) -> str:
     # Step 2: poll processing status until Instagram finishes downloading + transcoding.
     for _ in range(30):
         status = requests.get(
-            f"https://graph.facebook.com/{GRAPH_VERSION}/{container_id}",
+            f"https://graph.instagram.com/{GRAPH_VERSION}/{container_id}",
             params={"fields": "status_code", "access_token": token},
             timeout=30,
         ).json()
@@ -106,7 +110,7 @@ def publish_reel(video_url: str, caption: str) -> str:
 
 
 def publish_image(image_url: str, caption: str, account_id: str, token: str) -> tuple[str, str | None]:
-    base = f"https://graph.facebook.com/{GRAPH_VERSION}/{account_id}"
+    base = f"https://graph.instagram.com/{GRAPH_VERSION}/{account_id}"
 
     # Step 1: create a media container — Instagram fetches the image from `image_url` itself.
     create = requests.post(
@@ -130,7 +134,7 @@ def publish_image(image_url: str, caption: str, account_id: str, token: str) -> 
     permalink = None
     try:
         info = requests.get(
-            f"https://graph.facebook.com/{GRAPH_VERSION}/{media_id}",
+            f"https://graph.instagram.com/{GRAPH_VERSION}/{media_id}",
             params={"fields": "permalink", "access_token": token},
             timeout=15,
         )
@@ -144,11 +148,14 @@ def publish_image(image_url: str, caption: str, account_id: str, token: str) -> 
 def _run_image_cli() -> None:
     from publish_guard import already_published, mark_published
 
-    parser = argparse.ArgumentParser(description="Publish a static image post to Instagram")
-    parser.add_argument("--image", required=True, help="Local image path — existence check + idempotency hash")
-    parser.add_argument("--image-url", required=True, help="Public HTTPS URL Instagram will fetch the image from")
-    parser.add_argument("--account", required=True, choices=list(ACCOUNTS), help="Which connected account to publish to")
-    parser.add_argument("--caption", default="", help="Post caption (default: empty)")
+    parser = argparse.ArgumentParser(
+        description="Publish a static image post to Instagram — any local file, any of the two connected accounts.",
+        epilog='Example: python publish_instagram.py -i photo.jpg -u https://example.com/photo.jpg -a roomsgold3 -c "Caption text"',
+    )
+    parser.add_argument("-i", "--image", required=True, help="Local image path (ANY path, not just state/content_drafts) — existence check + idempotency hash")
+    parser.add_argument("-u", "--image-url", required=True, help="Public HTTPS URL Instagram will fetch the image from")
+    parser.add_argument("-a", "--account", required=True, choices=list(ACCOUNTS), help="Which connected account to publish to")
+    parser.add_argument("-c", "--caption", default="", help="Post caption (default: empty)")
     args = parser.parse_args(sys.argv[1:])
 
     if not os.path.isfile(args.image):
